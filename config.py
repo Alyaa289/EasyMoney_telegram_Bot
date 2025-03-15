@@ -4,8 +4,9 @@ DB_CONFIG = {
     "host": "turntable.proxy.rlwy.net ",
     "user": "root",
     "password": "deumDYtgMcJbFKQgpVCIKYOyVclSpBQk",
-    "database": "railway"
-    
+    "database": "railway",
+    "port": 36499
+
     # "host": "localhost",
     # "user": "alya",
     # "password": "mumdad2002",
