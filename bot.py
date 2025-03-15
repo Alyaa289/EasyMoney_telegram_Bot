@@ -10,7 +10,7 @@ conn = mysql.connector.connect(**config.DB_CONFIG)
 cursor = conn.cursor()
 
 CHANNEL_ID = "@lucky_wh2el"  # Channel for subscription verification
-PAYMENT_METHODS = ["Etisalat Cash", "Orange Cash", "Vodafone Cash", "PayPal", "Binance", "Western Union", "Instapay"]
+PAYMENT_METHODS = ["اتصالات كاش", "أورانج كاش", "فودافون كاش", "باي بال", "بينانس", "ويسترن يونيون", "إنستاباي"]
 user_withdraw_requests = {}
 
 # Function to add a new user
@@ -45,7 +45,7 @@ async def start(update: Update, context: CallbackContext):
         referred_by = context.args[0]
     
     user_keyboard = ReplyKeyboardMarkup(
-        [["💰 Check Balance", "🎁 Invite a Friend"], ["💵 Withdraw Balance"]],
+        [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
         resize_keyboard=True
     )
 
@@ -57,9 +57,9 @@ async def start(update: Update, context: CallbackContext):
         referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
         
         message = (
-            f"Welcome {user.first_name}! 🎉\n"
-            "Earn $50 for each invited friend!\n"
-            f"Share this link with your friends:\n\n{referral_link}"
+            f"مرحبًا {user.first_name}! 🎉\n"
+            "اكسب 50 جنيه مصري لكل صديق تدعوه!\n"
+            f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
         )
 
         await update.message.reply_text(message, reply_markup=user_keyboard)
@@ -78,11 +78,11 @@ async def start(update: Update, context: CallbackContext):
 
                 await context.bot.send_message(
                     chat_id=referred_by,
-                    text=f"🎉 A friend joined using your invite link! You earned $50!",
+                    text=f"🎉 انضم صديق باستخدام رابط الدعوة الخاص بك! لقد ربحت 50 جنيه مصري!",
                     reply_markup=user_keyboard
                 )
     else:
-        await update.message.reply_text("✅ Welcome back! Use the menu below to continue.", reply_markup=user_keyboard)
+        await update.message.reply_text("✅ مرحبًا بعودتك! استخدم القائمة أدناه للمتابعة.", reply_markup=user_keyboard)
 
 # Command handler for user commands
 async def handle_user_commands(update: Update, context: CallbackContext):
@@ -105,24 +105,24 @@ async def handle_user_commands(update: Update, context: CallbackContext):
         await handle_admin_commands(update, context)
         return
 
-    if text == "💰 Check Balance":
+    if text == "💰 التحقق من الرصيد":
         cursor.execute("SELECT balance FROM users WHERE user_id = %s", (user_id,))
         balance = cursor.fetchone()[0]
-        await update.message.reply_text(f"Your balance: ${balance}")
+        await update.message.reply_text(f"رصيدك: {balance} جنيه مصري")
 
-    elif text == "🎁 Invite a Friend":
+    elif text == "🎁 دعوة صديق":
         referral_link = f"https://t.me/Easy_Money_win_bot?start={user_id}"
-        await update.message.reply_text(f"Invite a friend and earn $50!\nHere is your invite link:\n{referral_link}")
+        await update.message.reply_text(f"ادعُ صديقًا واربح 50 جنيه مصري!\nإليك رابط الدعوة الخاص بك:\n{referral_link}")
 
-    elif text == "💵 Withdraw Balance":
+    elif text == "💵 سحب الرصيد":
         if await is_user_subscribed(user_id, context):
-            await update.message.reply_text("Enter the amount you want to withdraw:")
+            await update.message.reply_text("أدخل المبلغ الذي تريد سحبه:")
             context.user_data["awaiting_amount"] = True
         else:
             await update.message.reply_text(
-                "To withdraw, you must join our channel first:\n"
-                "👉 [Join Channel](https://t.me/lucky_wh2el)\n"
-                "Once you have joined, press 'Withdraw Balance' again.",
+                "لسحب الرصيد، يجب عليك الانضمام إلى قناتنا أولاً:\n"
+                "👉 [انضم إلى القناة](https://t.me/lucky_wh2el)\n"
+                "بمجرد الانضمام، اضغط على 'سحب الرصيد' مرة أخرى.",
                 parse_mode="Markdown"
             )
 
@@ -137,20 +137,20 @@ async def handle_withdraw_amount(update: Update, context: CallbackContext):
         balance = cursor.fetchone()[0]
 
         if amount > balance:
-            await update.message.reply_text(f"❌ Insufficient balance! You only have ${balance}. Please enter a valid amount.")
+            await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.")
             return  
         elif amount <= 0:
-            await update.message.reply_text("❌ Please enter a valid amount greater than 0.")
+            await update.message.reply_text("❌ يرجى إدخال مبلغ صالح أكبر من 0.")
             return
         
         user_withdraw_requests[user_id] = amount
         context.user_data.pop("awaiting_amount")
 
         payment_keyboard = ReplyKeyboardMarkup([[method] for method in PAYMENT_METHODS], resize_keyboard=True)
-        await update.message.reply_text("✅ Choose your withdrawal method:", reply_markup=payment_keyboard)
+        await update.message.reply_text("✅ اختر طريقة السحب:", reply_markup=payment_keyboard)
         context.user_data["awaiting_payment_method"] = True
     except ValueError:
-        await update.message.reply_text("❌ Please enter a valid numeric amount.")
+        await update.message.reply_text("❌ يرجى إدخال مبلغ رقمي صالح.")
 
 # Handler for payment method selection
 async def handle_payment_method(update: Update, context: CallbackContext):
@@ -161,31 +161,31 @@ async def handle_payment_method(update: Update, context: CallbackContext):
         if text in PAYMENT_METHODS:
             amount = user_withdraw_requests.get(user_id)
             if amount is None:
-                await update.message.reply_text("❌ Something went wrong. Please try again.")
+                await update.message.reply_text("❌ حدث خطأ ما. يرجى المحاولة مرة أخرى.")
                 return
             
             user_withdraw_requests[user_id] = {"amount": amount, "method": text}
             context.user_data.pop("awaiting_payment_method")
 
-            if text in ["PayPal", "Binance", "Western Union"]:
-                await update.message.reply_text(f"Enter your {text} email:")
+            if text in ["باي بال", "بينانس", "ويسترن يونيون"]:
+                await update.message.reply_text(f"أدخل بريدك الإلكتروني الخاص بـ {text}:")
             else:
-                await update.message.reply_text("Enter your phone number:")
+                await update.message.reply_text("أدخل رقم هاتفك:")
             
             context.user_data["awaiting_payment_info"] = True
         else:
-            await update.message.reply_text("❌ Please choose a valid payment method from the list.")
+            await update.message.reply_text("❌ يرجى اختيار طريقة دفع صالحة من القائمة.")
 
 # Function to validate phone number
 def is_valid_phone_number(number, method):
     if not number.isdigit() or len(number) != 11:
         return False
     
-    if method == "Vodafone Cash" and not number.startswith("010"):
+    if method == "فودافون كاش" and not number.startswith("010"):
         return False
-    elif method == "Etisalat Cash" and not number.startswith("011"):
+    elif method == "اتصالات كاش" and not number.startswith("011"):
         return False
-    elif method == "Orange Cash" and not number.startswith("012"):
+    elif method == "أورانج كاش" and not number.startswith("012"):
         return False
 
     return True
@@ -203,19 +203,19 @@ async def handle_payment_info(update: Update, context: CallbackContext):
     if context.user_data.get("awaiting_payment_info"):
         withdraw_data = user_withdraw_requests.get(user_id)
         if not withdraw_data:
-            await update.message.reply_text("❌ Something went wrong. Please try again.")
+            await update.message.reply_text("❌ حدث خطأ ما. يرجى المحاولة مرة أخرى.")
             return
 
         amount = withdraw_data["amount"]
         method = withdraw_data["method"]
 
-        if method in ["PayPal", "Binance", "Western Union"]:
+        if method in ["باي بال", "بينانس", "ويسترن يونيون"]:
             if not is_valid_email(text):
-                await update.message.reply_text("❌ Invalid email format! Please enter a valid email.")
+                await update.message.reply_text("❌ تنسيق البريد الإلكتروني غير صالح! يرجى إدخال بريد إلكتروني صالح.")
                 return
         else:
             if not is_valid_phone_number(text, method):
-                await update.message.reply_text(f"❌ Invalid phone number! Please enter a valid {method} number.")
+                await update.message.reply_text(f"❌ رقم الهاتف غير صالح! يرجى إدخال رقم {method} صالح.")
                 return
 
         user_withdraw_requests[user_id]["info"] = text
@@ -225,57 +225,57 @@ async def handle_payment_info(update: Update, context: CallbackContext):
         conn.commit()
 
         user_keyboard = ReplyKeyboardMarkup(
-            [["💰 Check Balance", "🎁 Invite a Friend"], ["💵 Withdraw Balance"]],
+            [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
             resize_keyboard=True
         )
 
         await update.message.reply_text(
-            f"✅ Your withdrawal request of ${amount} via {method} is being processed! 🚀\n"
-            "You will be notified once the transaction is complete.",
+            f"✅ طلب السحب الخاص بك بمبلغ {amount} جنيه مصري عبر {method} قيد المعالجة! 🚀\n"
+            "سيتم إخطارك بمجرد اكتمال المعاملة.",
             reply_markup=user_keyboard
         )
 
 # Admin command handler
 async def admin(update: Update, context: CallbackContext):
     admin_keyboard = ReplyKeyboardMarkup(
-        [["💰 Check Balance", "🎁 Invite a Friend"], ["💵 Withdraw Balance"]],
+        [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
         resize_keyboard=True
     )
     
     user_id = update.message.from_user.id
 
     if user_id != config.ADMIN_ID:
-        await update.message.reply_text("❌ Access denied.", reply_markup=admin_keyboard)
+        await update.message.reply_text("❌ الوصول مرفوض.", reply_markup=admin_keyboard)
         return
 
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 Broadcast Message", "👥 View Users Count"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"]],
         resize_keyboard=True
     )
 
-    await update.message.reply_text("🔹 Admin Dashboard\nChoose an option:", reply_markup=admin_keyboard)
+    await update.message.reply_text("🔹 لوحة تحكم الأدمن\nاختر خيارًا:", reply_markup=admin_keyboard)
 
 # Handler for admin commands
 async def handle_admin_commands(update: Update, context: CallbackContext):
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 Broadcast Message", "👥 View Users Count"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"]],
         resize_keyboard=True
     )
     user_id = update.message.from_user.id
     text = update.message.text
 
     if user_id != config.ADMIN_ID:
-        await update.message.reply_text("❌ Access denied.")
+        await update.message.reply_text("❌ الوصول مرفوض.")
         return
 
-    if text == "📢 Broadcast Message":
-        await update.message.reply_text("✏️ Enter the message you want to broadcast:")
+    if text == "📢 رسالة جماعية":
+        await update.message.reply_text("✏️ أدخل الرسالة التي تريد إرسالها:")
         context.user_data["awaiting_broadcast"] = True
 
-    elif text == "👥 View Users Count":
+    elif text == "👥 عرض عدد المستخدمين":
         cursor.execute("SELECT COUNT(*) FROM users")
         count = cursor.fetchone()[0]
-        await update.message.reply_text(f"👥 Total users: {count}")
+        await update.message.reply_text(f"👥 إجمالي المستخدمين: {count}")
 
     elif context.user_data.get("awaiting_broadcast"):
         message_to_send = text
@@ -290,7 +290,7 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
             except Exception as e:
                 print(f"Could not send message to {user[0]}: {e}")
 
-        await update.message.reply_text("✅ Message sent to all users.", reply_markup=admin_keyboard)
+        await update.message.reply_text("✅ تم إرسال الرسالة إلى جميع المستخدمين.", reply_markup=admin_keyboard)
 
 # Main function to run the bot
 def main():
