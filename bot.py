@@ -128,6 +128,10 @@ async def handle_user_commands(update: Update, context: CallbackContext):
 
 # Handler for withdraw amount input
 async def handle_withdraw_amount(update: Update, context: CallbackContext):
+    user_keyboard = ReplyKeyboardMarkup(
+        [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
+        resize_keyboard=True
+    )
     user_id = update.message.from_user.id
     text = update.message.text
 
@@ -137,10 +141,10 @@ async def handle_withdraw_amount(update: Update, context: CallbackContext):
         balance = cursor.fetchone()[0]
 
         if amount > balance:
-            await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.")
+            await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.", reply_markup=user_keyboard)
             return  
         elif amount <= 0:
-            await update.message.reply_text("❌ يرجى إدخال مبلغ صالح أكبر من 0.")
+            await update.message.reply_text("❌ يرجى إدخال مبلغ صالح أكبر من 0.", reply_markup=user_keyboard)
             return
         
         user_withdraw_requests[user_id] = amount
