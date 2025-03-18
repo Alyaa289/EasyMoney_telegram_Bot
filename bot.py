@@ -89,26 +89,27 @@ async def handle_user_commands(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    # ✅ عند اختيار أي خيار جديد، يتم إلغاء أي عملية سحب سابقة
-    context.user_data.pop("awaiting_amount", None)
-    context.user_data.pop("awaiting_payment_method", None)
-    context.user_data.pop("awaiting_payment_info", None)
+    # ✅ إعادة تعيين الحالات عند اختيار خيار عام
+    if text in ["💰 التحقق من الرصيد", "🎁 دعوة صديق", "💵 سحب الرصيد"]:
+        context.user_data.pop("awaiting_amount", None)
+        context.user_data.pop("awaiting_payment_method", None)
+        context.user_data.pop("awaiting_payment_info", None)
 
-    if user_id == config.ADMIN_ID:
-        await handle_admin_commands(update, context)
-        return
-
+    # ✅ تنفيذ الخيارات العامة
     if text == "💰 التحقق من الرصيد":
         cursor.execute("SELECT balance FROM users WHERE user_id = %s", (user_id,))
         balance = cursor.fetchone()[0]
         await update.message.reply_text(f"رصيدك: {balance} جنيه مصري")
+        return
 
     elif text == "🎁 دعوة صديق":
         referral_link = f"https://t.me/Easy_Money_win_bot?start={user_id}"
         await update.message.reply_text(f"ادعُ صديقًا واربح 50 جنيه مصري!\nإليك رابط الدعوة الخاص بك:\n{referral_link}")
+        return
 
     elif text == "💵 سحب الرصيد":
         if await is_user_subscribed(user_id, context):
+            print(f"[DEBUG] User {user_id} selected Withdraw Balance")  
             await update.message.reply_text("أدخل المبلغ الذي تريد سحبه:")
             context.user_data["awaiting_amount"] = True
         else:
@@ -118,12 +119,34 @@ async def handle_user_commands(update: Update, context: CallbackContext):
                 "بمجرد الانضمام، اضغط على 'سحب الرصيد' مرة أخرى.",
                 parse_mode="Markdown"
             )
+        return
 
+    # ✅ التحقق من الحالات الخاصة
+    if context.user_data.get("awaiting_amount"):
+        await handle_withdraw_amount(update, context)
+        return
+
+    if context.user_data.get("awaiting_payment_method"):
+        await handle_payment_method(update, context)
+        return
+
+    if context.user_data.get("awaiting_payment_info"):
+        await handle_payment_info(update, context)
+        return
+
+    # إذا لم يتم التعرف على النص المدخل
+    await update.message.reply_text("❌ خيار غير صالح. يرجى اختيار خيار من القائمة.")
 
 # Handler for withdraw amount input
 async def handle_withdraw_amount(update: Update, context: CallbackContext):
+    user_keyboard = ReplyKeyboardMarkup(
+        [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
+        resize_keyboard=True
+    )
     user_id = update.message.from_user.id
     text = update.message.text
+
+    print(f"[DEBUG] Received withdraw amount input: {text} from user {user_id}") 
 
     try:
         amount = int(text)
@@ -138,19 +161,22 @@ async def handle_withdraw_amount(update: Update, context: CallbackContext):
         balance = result[0]
 
         if amount > balance:
-            await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.")
+            await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.", reply_markup=user_keyboard)
             return  
         elif amount <= 0:
-            await update.message.reply_text("❌ يرجى إدخال مبلغ أكبر من 0.")
+            await update.message.reply_text("❌ يرجى إدخال مبلغ أكبر من 0.", reply_markup=user_keyboard)
             return
-        
-        user_withdraw_requests[user_id] = amount
 
+        print(f"[DEBUG] Saving withdraw request: {amount} for user {user_id}")
+
+        user_withdraw_requests[user_id] = amount
         context.user_data.pop("awaiting_amount", None)
 
+        
         payment_keyboard = ReplyKeyboardMarkup([[method] for method in PAYMENT_METHODS], resize_keyboard=True)
         await update.message.reply_text("✅ اختر طريقة السحب:", reply_markup=payment_keyboard)
 
+        
         context.user_data["awaiting_payment_method"] = True
 
     except ValueError:
@@ -161,21 +187,27 @@ async def handle_payment_method(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    if context.user_data.get("awaiting_payment_method"):
+    print(f"[DEBUG] User {user_id} selected payment method: {text}")  # ✅ Debugging
+
+    if "awaiting_payment_method" in context.user_data:
         if text in PAYMENT_METHODS:
             amount = user_withdraw_requests.get(user_id)
+
             if amount is None:
                 await update.message.reply_text("❌ حدث خطأ ما. يرجى المحاولة مرة أخرى.")
                 return
             
+            # ✅ تخزين طريقة الدفع والمبلغ في القاموس
             user_withdraw_requests[user_id] = {"amount": amount, "method": text}
             context.user_data.pop("awaiting_payment_method")
 
+            # ✅ طلب معلومات إضافية بناءً على طريقة الدفع
             if text in ["باي بال", "بينانس", "ويسترن يونيون"]:
                 await update.message.reply_text(f"أدخل بريدك الإلكتروني الخاص بـ {text}:")
             else:
-                await update.message.reply_text("أدخل رقم هاتفك:")
-            
+                await update.message.reply_text("أدخل رقم هاتفك المرتبط بطريقة الدفع:")
+
+            # ✅ تعيين انتظار إدخال البيانات
             context.user_data["awaiting_payment_info"] = True
         else:
             await update.message.reply_text("❌ يرجى اختيار طريقة دفع صالحة من القائمة.")
@@ -303,6 +335,9 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_commands))
+    app.add_handler(MessageHandler(filters.TEXT, handle_withdraw_amount))  
+    app.add_handler(MessageHandler(filters.TEXT, handle_payment_method)) 
+    app.add_handler(MessageHandler(filters.TEXT, handle_payment_info)) 
 
     app.run_polling()
 
