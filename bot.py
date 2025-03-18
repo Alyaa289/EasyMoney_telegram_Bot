@@ -89,13 +89,11 @@ async def handle_user_commands(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    # ✅ إعادة تعيين الحالات عند اختيار خيار عام
     if text in ["💰 التحقق من الرصيد", "🎁 دعوة صديق", "💵 سحب الرصيد"]:
         context.user_data.pop("awaiting_amount", None)
         context.user_data.pop("awaiting_payment_method", None)
         context.user_data.pop("awaiting_payment_info", None)
 
-    # ✅ تنفيذ الخيارات العامة
     if text == "💰 التحقق من الرصيد":
         cursor.execute("SELECT balance FROM users WHERE user_id = %s", (user_id,))
         balance = cursor.fetchone()[0]
@@ -121,7 +119,6 @@ async def handle_user_commands(update: Update, context: CallbackContext):
             )
         return
 
-    # ✅ التحقق من الحالات الخاصة
     if context.user_data.get("awaiting_amount"):
         await handle_withdraw_amount(update, context)
         return
@@ -134,7 +131,6 @@ async def handle_user_commands(update: Update, context: CallbackContext):
         await handle_payment_info(update, context)
         return
 
-    # إذا لم يتم التعرف على النص المدخل
     await update.message.reply_text("❌ خيار غير صالح. يرجى اختيار خيار من القائمة.")
 
 # Handler for withdraw amount input
