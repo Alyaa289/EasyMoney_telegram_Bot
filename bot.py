@@ -52,7 +52,7 @@ async def start(update: Update, context: CallbackContext):
     cursor.execute("SELECT * FROM users WHERE user_id = %s", (user.id,))
     existing_user = cursor.fetchone()
 
-    # ✅ دائمًا أظهر رسالة الترحيب للمستخدم
+    
     referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
     message = (
         f"مرحبًا {user.first_name}! 🎉\n"
@@ -62,7 +62,7 @@ async def start(update: Update, context: CallbackContext):
 
     await update.message.reply_text(message, reply_markup=user_keyboard)
 
-    # ✅ التحقق مما إذا كان المستخدم جديدًا
+    
     if not existing_user:
         add_user(user.id, user.username, referred_by)
 
