@@ -89,6 +89,9 @@ async def handle_user_commands(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
+    if user_id == config.ADMIN_ID:
+        return
+
     if text in ["💰 التحقق من الرصيد", "🎁 دعوة صديق", "💵 سحب الرصيد"]:
         context.user_data.pop("awaiting_amount", None)
         context.user_data.pop("awaiting_payment_method", None)
@@ -330,6 +333,7 @@ def main():
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_commands))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_commands))
     app.add_handler(MessageHandler(filters.TEXT, handle_withdraw_amount))  
     app.add_handler(MessageHandler(filters.TEXT, handle_payment_method)) 
