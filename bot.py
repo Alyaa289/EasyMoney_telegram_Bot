@@ -43,7 +43,7 @@ async def start(update: Update, context: CallbackContext):
 
     if context.args:
         referred_by = context.args[0]
-    
+
     user_keyboard = ReplyKeyboardMarkup(
         [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
         resize_keyboard=True
@@ -52,17 +52,19 @@ async def start(update: Update, context: CallbackContext):
     cursor.execute("SELECT * FROM users WHERE user_id = %s", (user.id,))
     existing_user = cursor.fetchone()
 
+    # ✅ دائمًا أظهر رسالة الترحيب للمستخدم
+    referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
+    message = (
+        f"مرحبًا {user.first_name}! 🎉\n"
+        "اكسب 50 جنيه مصري لكل صديق تدعوه!\n"
+        f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
+    )
+
+    await update.message.reply_text(message, reply_markup=user_keyboard)
+
+    # ✅ التحقق مما إذا كان المستخدم جديدًا
     if not existing_user:
         add_user(user.id, user.username, referred_by)
-        referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
-        
-        message = (
-            f"مرحبًا {user.first_name}! 🎉\n"
-            "اكسب 50 جنيه مصري لكل صديق تدعوه!\n"
-            f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
-        )
-
-        await update.message.reply_text(message, reply_markup=user_keyboard)
 
         if referred_by:
             referred_by = int(referred_by)
@@ -81,25 +83,60 @@ async def start(update: Update, context: CallbackContext):
                     text=f"🎉 انضم صديق باستخدام رابط الدعوة الخاص بك! لقد ربحت 50 جنيه مصري!",
                     reply_markup=user_keyboard
                 )
-    else:
-        await update.message.reply_text("✅ مرحبًا بعودتك! استخدم القائمة أدناه للمتابعة.", reply_markup=user_keyboard)
 
 # Command handler for user commands
+# async def handle_user_commands(update: Update, context: CallbackContext):
+#     user_id = update.message.from_user.id
+#     text = update.message.text
+
+#     context.user_data.pop("awaiting_amount", None)
+#     context.user_data.pop("awaiting_payment_method", None)
+#     context.user_data.pop("awaiting_payment_info", None)
+
+#     if context.user_data.get("awaiting_amount"):
+#         await handle_withdraw_amount(update, context)
+#         return
+
+#     if context.user_data.get("awaiting_payment_method"):
+#         await handle_payment_method(update, context)
+#         return
+
+#     if context.user_data.get("awaiting_payment_info"):
+#         await handle_payment_info(update, context)
+#         return
+
+#     if user_id == config.ADMIN_ID:
+#         await handle_admin_commands(update, context)
+#         return
+
+#     if text == "💰 التحقق من الرصيد":
+#         cursor.execute("SELECT balance FROM users WHERE user_id = %s", (user_id,))
+#         balance = cursor.fetchone()[0]
+#         await update.message.reply_text(f"رصيدك: {balance} جنيه مصري")
+
+#     elif text == "🎁 دعوة صديق":
+#         referral_link = f"https://t.me/Easy_Money_win_bot?start={user_id}"
+#         await update.message.reply_text(f"ادعُ صديقًا واربح 50 جنيه مصري!\nإليك رابط الدعوة الخاص بك:\n{referral_link}")
+
+#     elif text == "💵 سحب الرصيد":
+#         if await is_user_subscribed(user_id, context):
+#             await update.message.reply_text("أدخل المبلغ الذي تريد سحبه:")
+#             context.user_data["awaiting_amount"] = True
+#         else:
+#             await update.message.reply_text(
+#                 "لسحب الرصيد، يجب عليك الانضمام إلى قناتنا أولاً:\n"
+#                 "👉 [انضم إلى القناة](https://t.me/lucky_wh2el)\n"
+#                 "بمجرد الانضمام، اضغط على 'سحب الرصيد' مرة أخرى.",
+#                 parse_mode="Markdown"
+#             )
 async def handle_user_commands(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    if context.user_data.get("awaiting_amount"):
-        await handle_withdraw_amount(update, context)
-        return
-
-    if context.user_data.get("awaiting_payment_method"):
-        await handle_payment_method(update, context)
-        return
-
-    if context.user_data.get("awaiting_payment_info"):
-        await handle_payment_info(update, context)
-        return
+    # ✅ عند اختيار أي خيار جديد، يتم إلغاء أي عملية سحب سابقة
+    context.user_data.pop("awaiting_amount", None)
+    context.user_data.pop("awaiting_payment_method", None)
+    context.user_data.pop("awaiting_payment_info", None)
 
     if user_id == config.ADMIN_ID:
         await handle_admin_commands(update, context)
@@ -125,6 +162,7 @@ async def handle_user_commands(update: Update, context: CallbackContext):
                 "بمجرد الانضمام، اضغط على 'سحب الرصيد' مرة أخرى.",
                 parse_mode="Markdown"
             )
+
 
 # Handler for withdraw amount input
 async def handle_withdraw_amount(update: Update, context: CallbackContext):

@@ -1,5 +1,5 @@
 #!/bin/sh
-'''exec' "/home/alya/Downloads/telegram_bot/Easy Money/venv/bin/python3" "$0" "$@"
+'''exec' "/home/alya/telegram_bot/Easy Money/venv/bin/python3" "$0" "$@"
 ' '''
 # -*- coding: utf-8 -*-
 import re
