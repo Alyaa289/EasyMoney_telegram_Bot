@@ -56,7 +56,7 @@ async def start(update: Update, context: CallbackContext):
     referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
     message = (
         # f"مرحبًا {user.first_name}!\n"
-        "من كل شخص تقوم بدعوته سوف تكسب 500 جنيه مصري 🔥\n\n"
+        "من كل شخص تقوم بدعوته سوف تكسب 50 جنيه مصري 🔥\n\n"
         f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
     )
 
@@ -105,7 +105,11 @@ async def handle_user_commands(update: Update, context: CallbackContext):
 
     elif text == "🎁 دعوة صديق":
         referral_link = f"https://t.me/Easy_Money_win_bot?start={user_id}"
-        await update.message.reply_text(f"ادعُ صديقًا واربح 50 جنيه مصري!\nإليك رابط الدعوة الخاص بك:\n{referral_link}")
+        await update.message.reply_text(
+        # f"مرحبًا {user.first_name}!\n"
+        "من كل شخص تقوم بدعوته سوف تكسب 50 جنيه مصري 🔥\n\n"
+        f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
+    )
         return
 
     elif text == "💵 سحب الرصيد":
@@ -186,7 +190,7 @@ async def handle_payment_method(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
     text = update.message.text
 
-    print(f"[DEBUG] User {user_id} selected payment method: {text}")  # ✅ Debugging
+    print(f"[DEBUG] User {user_id} selected payment method: {text}")  # Debugging
 
     if "awaiting_payment_method" in context.user_data:
         if text in PAYMENT_METHODS:
@@ -196,17 +200,14 @@ async def handle_payment_method(update: Update, context: CallbackContext):
                 await update.message.reply_text("❌ حدث خطأ ما. يرجى المحاولة مرة أخرى.")
                 return
             
-            # ✅ تخزين طريقة الدفع والمبلغ في القاموس
             user_withdraw_requests[user_id] = {"amount": amount, "method": text}
             context.user_data.pop("awaiting_payment_method")
 
-            # ✅ طلب معلومات إضافية بناءً على طريقة الدفع
             if text in ["باي بال", "بينانس", "ويسترن يونيون"]:
                 await update.message.reply_text(f"أدخل بريدك الإلكتروني الخاص بـ {text}:")
             else:
                 await update.message.reply_text("أدخل رقم هاتفك المرتبط بطريقة الدفع:")
 
-            # ✅ تعيين انتظار إدخال البيانات
             context.user_data["awaiting_payment_info"] = True
         else:
             await update.message.reply_text("❌ يرجى اختيار طريقة دفع صالحة من القائمة.")
@@ -296,12 +297,7 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
         [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"], ["📷 إرسال صورة جماعية"]],
         resize_keyboard=True
     )
-    user_id = update.message.from_user.id
     text = update.message.text
-
-    if user_id != config.ADMIN_ID:
-        await update.message.reply_text("❌ الوصول مرفوض.")
-        return
 
     if text == "📢 رسالة جماعية":
         await update.message.reply_text("✏️ أدخل الرسالة التي تريد إرسالها:")
@@ -333,7 +329,7 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
 
     elif context.user_data.get("awaiting_image_broadcast"):
         if update.message.photo:
-            photo = update.message.photo[-1].file_id  # الحصول على الصورة بجودة عالية
+            photo = update.message.photo[-1].file_id  
             context.user_data.pop("awaiting_image_broadcast")
 
             cursor.execute("SELECT user_id FROM users")
@@ -349,19 +345,20 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
         else:
             await update.message.reply_text("❌ يرجى إرسال صورة صالحة.")
 
+
 # Main function to run the bot
+
 def main():
     app = Application.builder().token(config.TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_commands))
-    app.add_handler(MessageHandler(filters.PHOTO, handle_admin_commands))  # لمعالجة الصور
+    
+    app.add_handler(MessageHandler(filters.TEXT & filters.User(user_id=config.ADMIN_ID), handle_admin_commands))
+    app.add_handler(MessageHandler(filters.PHOTO & filters.User(user_id=config.ADMIN_ID), handle_admin_commands)) 
+    
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_commands))
-    app.add_handler(MessageHandler(filters.TEXT, handle_withdraw_amount))  
-    app.add_handler(MessageHandler(filters.TEXT, handle_payment_method)) 
-    app.add_handler(MessageHandler(filters.TEXT, handle_payment_info)) 
-
+    
     app.run_polling()
 
 if __name__ == "__main__":
