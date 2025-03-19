@@ -55,8 +55,8 @@ async def start(update: Update, context: CallbackContext):
     
     referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
     message = (
-        f"مرحبًا {user.first_name}! 🎉\n"
-        "اكسب 50 جنيه مصري لكل صديق تدعوه!\n"
+        # f"مرحبًا {user.first_name}!\n"
+        "من كل شخص تقوم بدعوته سوف تكسب 500 جنيه مصري 🔥\n\n"
         f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
     )
 
@@ -284,7 +284,7 @@ async def admin(update: Update, context: CallbackContext):
         return
 
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"],["📷 إرسال صورة جماعية"]],
         resize_keyboard=True
     )
 
@@ -293,7 +293,7 @@ async def admin(update: Update, context: CallbackContext):
 # Handler for admin commands
 async def handle_admin_commands(update: Update, context: CallbackContext):
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"], ["📷 إرسال صورة جماعية"]],
         resize_keyboard=True
     )
     user_id = update.message.from_user.id
@@ -312,6 +312,10 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
         count = cursor.fetchone()[0]
         await update.message.reply_text(f"👥 إجمالي المستخدمين: {count}")
 
+    elif text == "📷 إرسال صورة جماعية":
+        await update.message.reply_text("📷 أرسل الصورة التي تريد إرسالها لجميع المستخدمين:")
+        context.user_data["awaiting_image_broadcast"] = True
+
     elif context.user_data.get("awaiting_broadcast"):
         message_to_send = text
         context.user_data.pop("awaiting_broadcast")
@@ -327,6 +331,24 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
 
         await update.message.reply_text("✅ تم إرسال الرسالة إلى جميع المستخدمين.", reply_markup=admin_keyboard)
 
+    elif context.user_data.get("awaiting_image_broadcast"):
+        if update.message.photo:
+            photo = update.message.photo[-1].file_id  # الحصول على الصورة بجودة عالية
+            context.user_data.pop("awaiting_image_broadcast")
+
+            cursor.execute("SELECT user_id FROM users")
+            users = cursor.fetchall()
+
+            for user in users:
+                try:
+                    await context.bot.send_photo(chat_id=user[0], photo=photo)
+                except Exception as e:
+                    print(f"Could not send photo to {user[0]}: {e}")
+
+            await update.message.reply_text("✅ تم إرسال الصورة إلى جميع المستخدمين.", reply_markup=admin_keyboard)
+        else:
+            await update.message.reply_text("❌ يرجى إرسال صورة صالحة.")
+
 # Main function to run the bot
 def main():
     app = Application.builder().token(config.TOKEN).build()
@@ -334,6 +356,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("admin", admin))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_admin_commands))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_admin_commands))  # لمعالجة الصور
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_commands))
     app.add_handler(MessageHandler(filters.TEXT, handle_withdraw_amount))  
     app.add_handler(MessageHandler(filters.TEXT, handle_payment_method)) 

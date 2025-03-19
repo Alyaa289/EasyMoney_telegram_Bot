@@ -1,5 +1,7 @@
 TOKEN = "7716381751:AAHZRjxloKPfq4nPxd1oP7fUWz22Xm7BtF0"
-ADMIN_ID = 1388747442# Telegram ID of the bot admin
+ADMIN_ID = 1388747442
+#5808711396 test admin
+# Telegram ID of the bot admin
 DB_CONFIG = {
     "host": "turntable.proxy.rlwy.net ",
     "user": "root",
