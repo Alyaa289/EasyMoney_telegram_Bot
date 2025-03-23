@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import Application, CommandHandler, CallbackContext, MessageHandler, filters, CallbackQueryHandler
 import mysql.connector
 import random
@@ -56,7 +56,7 @@ async def start(update: Update, context: CallbackContext):
     referral_link = f"https://t.me/Easy_Money_win_bot?start={user.id}"
     message = (
         # f"مرحبًا {user.first_name}!\n"
-        "من كل شخص تقوم بدعوته سوف تكسب 50 جنيه مصري 🔥\n\n"
+        "من كل شخص تقوم بدعوته سوف تكسب 1 جنيه مصري 🔥\n\n"
         f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
     )
 
@@ -72,7 +72,7 @@ async def start(update: Update, context: CallbackContext):
             referrer = cursor.fetchone()
 
             if referrer:
-                cursor.execute("UPDATE users SET balance = balance + 50 WHERE user_id = %s", (referred_by,))
+                cursor.execute("UPDATE users SET balance = balance + 1 WHERE user_id = %s", (referred_by,))
                 conn.commit()
 
                 cursor.execute("UPDATE users SET referred_by = %s WHERE user_id = %s", (referred_by, user.id))
@@ -80,7 +80,7 @@ async def start(update: Update, context: CallbackContext):
 
                 await context.bot.send_message(
                     chat_id=referred_by,
-                    text=f"🎉 انضم صديق باستخدام رابط الدعوة الخاص بك! لقد ربحت 50 جنيه مصري!",
+                    text=f"🎉 انضم صديق باستخدام رابط الدعوة الخاص بك! لقد ربحت 1 جنيه مصري!",
                     reply_markup=user_keyboard
                 )
 
@@ -107,7 +107,7 @@ async def handle_user_commands(update: Update, context: CallbackContext):
         referral_link = f"https://t.me/Easy_Money_win_bot?start={user_id}"
         await update.message.reply_text(
         # f"مرحبًا {user.first_name}!\n"
-        "من كل شخص تقوم بدعوته سوف تكسب 50 جنيه مصري 🔥\n\n"
+        "من كل شخص تقوم بدعوته سوف تكسب 1 جنيه مصري 🔥\n\n"
         f"شارك هذا الرابط مع أصدقائك:\n\n{referral_link}"
     )
         return
@@ -257,7 +257,10 @@ async def handle_payment_info(update: Update, context: CallbackContext):
         user_withdraw_requests[user_id]["info"] = text
         context.user_data.pop("awaiting_payment_info")
 
-        cursor.execute("UPDATE users SET balance = balance - %s WHERE user_id = %s", (amount, user_id))
+        cursor.execute("""
+            INSERT INTO withdrawals (user_id, amount, method, payment_info, status)
+            VALUES (%s, %s, %s, %s, 'pending')
+        """, (user_id, amount, method, text))
         conn.commit()
 
         user_keyboard = ReplyKeyboardMarkup(
@@ -266,26 +269,22 @@ async def handle_payment_info(update: Update, context: CallbackContext):
         )
 
         await update.message.reply_text(
-            f"✅ طلب السحب الخاص بك بمبلغ {amount} جنيه مصري عبر {method} قيد المعالجة! 🚀\n"
-            "سيتم إخطارك بمجرد اكتمال المعاملة.",
+            f"✅ تم تسجيل طلب السحب الخاص بك بمبلغ {amount} جنيه مصري عبر {method}. سيتم مراجعته قريبًا.",
             reply_markup=user_keyboard
         )
 
 # Admin command handler
 async def admin(update: Update, context: CallbackContext):
-    admin_keyboard = ReplyKeyboardMarkup(
-        [["💰 التحقق من الرصيد", "🎁 دعوة صديق"], ["💵 سحب الرصيد"]],
-        resize_keyboard=True
-    )
-    
     user_id = update.message.from_user.id
 
+    # تحقق من أن المستخدم هو الأدمن
     if user_id != config.ADMIN_ID:
-        await update.message.reply_text("❌ الوصول مرفوض.", reply_markup=admin_keyboard)
+        await update.message.reply_text("❌ الوصول مرفوض.")
         return
 
+    # لوحة تحكم الأدمن
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"],["📷 إرسال صورة جماعية"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"], ["📷 إرسال صورة جماعية", "📋 عرض طلبات السحب"]],
         resize_keyboard=True
     )
 
@@ -311,6 +310,32 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
     elif text == "📷 إرسال صورة جماعية":
         await update.message.reply_text("📷 أرسل الصورة التي تريد إرسالها لجميع المستخدمين:")
         context.user_data["awaiting_image_broadcast"] = True
+
+    elif text == "📋 عرض طلبات السحب":
+        cursor.execute("SELECT id, user_id, amount, method, payment_info, status FROM withdrawals WHERE status = 'pending'")
+        withdrawals = cursor.fetchall()
+
+        if not withdrawals:
+            await update.message.reply_text("لا توجد طلبات سحب معلقة.")
+            return
+
+        for withdrawal in withdrawals:
+            withdrawal_id, user_id, amount, method, payment_info, status = withdrawal
+            message = (
+                f"🆔 طلب رقم: {withdrawal_id}\n"
+                f"👤 المستخدم: {user_id}\n"
+                f"💵 المبلغ: {amount} جنيه مصري\n"
+                f"💳 الطريقة: {method}\n"
+                f"📧 معلومات الدفع: {payment_info}\n"
+                f"📅 الحالة: {status}"
+            )
+
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ قبول", callback_data=f"approve_{withdrawal_id}"),
+                InlineKeyboardButton("❌ رفض", callback_data=f"reject_{withdrawal_id}")]
+            ])
+
+            await update.message.reply_text(message, reply_markup=keyboard)
 
     elif context.user_data.get("awaiting_broadcast"):
         message_to_send = text
@@ -346,6 +371,47 @@ async def handle_admin_commands(update: Update, context: CallbackContext):
             await update.message.reply_text("❌ يرجى إرسال صورة صالحة.")
 
 
+async def handle_withdrawal_action(update: Update, context: CallbackContext):
+    query = update.callback_query
+    await query.answer()
+
+    action, withdrawal_id = query.data.split("_")
+    withdrawal_id = int(withdrawal_id)
+
+    cursor.execute("SELECT user_id, amount, method FROM withdrawals WHERE id = %s", (withdrawal_id,))
+    withdrawal = cursor.fetchone()
+
+    if not withdrawal:
+        await query.edit_message_text("❌ الطلب غير موجود.")
+        return
+
+    user_id, amount, method = withdrawal
+
+    if action == "approve":
+        cursor.execute("SELECT balance FROM users WHERE user_id = %s", (user_id,))
+        user_balance = cursor.fetchone()[0]
+
+        if user_balance < amount:
+            await query.edit_message_text("❌ لا يمكن قبول الطلب. الرصيد غير كافٍ.")
+            return
+
+        cursor.execute("UPDATE users SET balance = balance - %s WHERE user_id = %s", (amount, user_id))
+        conn.commit()
+
+        cursor.execute("UPDATE withdrawals SET status = 'approved', processed_at = NOW() WHERE id = %s", (withdrawal_id,))
+        conn.commit()
+
+        await context.bot.send_message(chat_id=user_id, text=f"✅ تم قبول طلب السحب الخاص بك بمبلغ {amount} جنيه مصري عبر {method}.")
+        await query.edit_message_text("✅ تم قبول الطلب.")
+
+    elif action == "reject":
+        cursor.execute("UPDATE withdrawals SET status = 'rejected', processed_at = NOW() WHERE id = %s", (withdrawal_id,))
+        conn.commit()
+
+        await context.bot.send_message(chat_id=user_id, text=f"❌ تم رفض طلب السحب الخاص بك بمبلغ {amount} جنيه مصري.")
+        await query.edit_message_text("❌ تم رفض الطلب.")
+
+
 # Main function to run the bot
 
 def main():
@@ -358,6 +424,7 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO & filters.User(user_id=config.ADMIN_ID), handle_admin_commands)) 
     
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_commands))
+    app.add_handler(CallbackQueryHandler(handle_withdrawal_action))
     
     app.run_polling()
 
