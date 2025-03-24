@@ -163,6 +163,14 @@ async def handle_withdraw_amount(update: Update, context: CallbackContext):
 
         balance = result[0]
 
+        if balance < 25:
+            await update.message.reply_text(
+                "❌ رصيدك الحالي أقل من الحد الأدنى المسموح به للسحب (25 جنيه مصري). "
+                "قم بدعوة المزيد من الأصدقاء لزيادة رصيدك! 💰",
+                reply_markup=user_keyboard
+            )
+            return
+
         if amount > balance:
             await update.message.reply_text(f"❌ رصيد غير كافٍ! لديك فقط {balance} جنيه مصري. يرجى إدخال مبلغ صالح.", reply_markup=user_keyboard)
             return  
