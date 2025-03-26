@@ -301,7 +301,7 @@ async def admin(update: Update, context: CallbackContext):
 # Handler for admin commands
 async def handle_admin_commands(update: Update, context: CallbackContext):
     admin_keyboard = ReplyKeyboardMarkup(
-        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"], ["📷 إرسال صورة جماعية"]],
+        [["📢 رسالة جماعية", "👥 عرض عدد المستخدمين"], ["📷 إرسال صورة جماعية", "📋 عرض طلبات السحب"]],
         resize_keyboard=True
     )
     text = update.message.text
